@@ -11,14 +11,14 @@
 		{% for data in database %}
 			<div class="row">
 				<div class = "col-md-12 subject">
-					{{data.subject}}<br> 
-					{{data.created}}
+					<h3><b>{{data.subject}}</b></h3> 
+					<h5>{{data.created.date()}}</h5>
 				</div>
 			</div>
 			<hr>
 			<div class="row">
 				<div class="col-md-12 content">
-					{{data.content}}
+					<h4>{{data.content}}</h4>
 				</div>
 			</div>
 			<br>
