@@ -1,5 +1,6 @@
-import webapp2,jinja2,os,functions,datetime,urllib2,urllib,time
-from functions import valid_username, valid_password, valid_email,verify_password
+import webapp2,jinja2,os,datetime,urllib2,urllib,time
+from func import functions
+from func import encrypt
 from google.appengine.ext import db
 
 welcome_message = """
@@ -31,6 +32,7 @@ class Main(webapp2.RequestHandler):
 class UserDB(db.Model):
 	username = db.StringProperty(required=True)
 	password = db.StringProperty(required=True)
+	salt = db.StringProperty(required=True)
 	email = db.StringProperty()
 
 class BlogDB(db.Model):
@@ -78,16 +80,16 @@ class Signup(Handler):
 		self.write_form()
 
 	def validate_input(self,username,password,verify,email):
-		if not valid_username(username):
+		if not functions.valid_username(username):
 			error = "'%s' is not a valid username." % (username)
 			self.write_form(username,email,error)
-		elif not valid_password(password):
+		elif not functions.valid_password(password):
 			error = "Password is not valid is not a valid password."
 			self.write_form(username,email,error)
-		elif not verify_password(password,verify):
+		elif not functions.verify_password(password,verify):
 			error = "Verify and Password doesn't match"
 			self.write_form(username,email,error)
-		elif not valid_email(email):
+		elif not functions.valid_email(email):
 			error = "'%s' is not an valid email." % (email)
 			self.write_form(username,email,error)
 		else:
@@ -104,7 +106,8 @@ class Signup(Handler):
 			query = database.filter('username =', username)
 			values = query.get()
 			if not values:
-				data = UserDB(username=username,password=password,email=email)
+				password,salt = encrypt.hashify(password)
+				data = UserDB(username=username,password=password,salt=salt,email=email)
 				data.put()
 				cookie = str("username=%s; Path=/" % username)
 				self.response.headers.add_header('Set-Cookie', cookie)
@@ -127,16 +130,24 @@ class Login(Handler):
 	def write_form(self,username="",password="",error=""):
 		self.render("login.html",username=username,password=password,error=error)
 	def get(self):
-		self.write_form()	
+		self.write_form()
+	def add_secure_cookie(self,cookie_name,cookie_value):
+		cookie = str("%s=%s; Path=/" % (cookie_name,cookie_value))
+		return cookie
+	
 	def post(self):
 		username = self.request.get("username")
 		password = self.request.get("password")
 		database = UserDB.all()
+		for i in database:
+			print i.username,i.password,i.salt
 		query = database.filter('username =', username)
 		values = query.get()
 		if values:
-			if values.password == password:
-				cookie = str("username=%s; Path=/" % username)
+			if encrypt.verify_hash(password,values.salt,values.password):
+				print query.key().id()
+				username = encrypt.make_secure_val(username)
+				cookie = self.add_secure_cookie('username',username)
 				self.response.headers.add_header('Set-Cookie', cookie)
 				self.redirect("/blog/welcome")
 			else:
