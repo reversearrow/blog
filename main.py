@@ -118,9 +118,14 @@ class Signup(Handler):
 
 class Welcome(webapp2.RequestHandler):
 	def get(self):
-		username = self.request.cookies.get('username')
-		if username:
-			self.response.out.write(welcome_message % ({"username": username}))
+		user_id = self.request.cookies.get('user_id')
+		print user_id
+		if encrypt.check_cookie_val(user_id):
+			database = UserDB.all()
+			keyid = int(user_id.split("|")[0])
+			database = database.get().get_by_id(keyid)
+			if database:
+				self.response.out.write(welcome_message % ({"username": database.username}))
 		else:
 			self.redirect("/blog/signup")
 
@@ -133,21 +138,21 @@ class Login(Handler):
 		self.write_form()
 	def add_secure_cookie(self,cookie_name,cookie_value):
 		cookie = str("%s=%s; Path=/" % (cookie_name,cookie_value))
-		return cookie
-	
+		return cookie	
 	def post(self):
 		username = self.request.get("username")
 		password = self.request.get("password")
 		database = UserDB.all()
-		for i in database:
-			print i.username,i.password,i.salt
 		query = database.filter('username =', username)
+		#keyid = int("5066549580791808")
+		#database = database.get().get_by_id(keyid)
+		#print database.username
 		values = query.get()
 		if values:
 			if encrypt.verify_hash(password,values.salt,values.password):
-				print query.key().id()
-				username = encrypt.make_secure_val(username)
-				cookie = self.add_secure_cookie('username',username)
+				#print str(values.key().id())
+				user_id = encrypt.make_secure_val(str(values.key().id()))
+				cookie = self.add_secure_cookie('user_id',user_id)
 				self.response.headers.add_header('Set-Cookie', cookie)
 				self.redirect("/blog/welcome")
 			else:

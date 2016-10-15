@@ -1,5 +1,4 @@
-import hashlib,binascii,os,hmac
-
+import hashlib,binascii,os,hmac,secret_keys
 
 def hashify(password,salt=""):
 	hash_algorith = "sha256"
@@ -22,11 +21,16 @@ def verify_hash(password,salt,stored_hash):
 	else:
 		return False
 
-def make_secure_val(val):
-	return '%s|%s' % (val,hmac.new(secret,val).hexdigest())
 
-def check_secure_val(secure_val):
-	val = secure_val.split('|')[0]
-	if secure_val == val:
-		return val
+def hash_str(s):
+	secret = secret_keys.get_secret()
+	return hmac.new(secret,s).hexdigest()
+
+def make_secure_val(val):
+	return '%s|%s' % (val,hash_str(val))
+
+def check_cookie_val(h):
+    s = h.split("|")[0]
+    if h == make_secure_val(s):
+        return s
 
